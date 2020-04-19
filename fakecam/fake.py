@@ -19,17 +19,25 @@ sf = 0.5
 # setup the fake camera
 fake = pyfakewebcam.FakeWebcam('/dev/video2', width, height)
 
-# load the virtual background
-background = cv2.imread("background.jpg")
-background = cv2.resize(background, (width, height))
-
 
 def handler(signal_received, frame):
-    # Handle any cleanup here
+    # load the virtual background
     global background
     background = cv2.imread("background.jpg")
     background = cv2.resize(background, (width, height))
     print('Reloaded the background image')
+
+    global foreground
+    foreground = cv2.imread("foreground.jpg", cv2.IMREAD_GRAYSCALE)
+    if foreground is None:
+        foreground = np.zeros((height,width), np.float)
+        print('Using empty foreground mask')
+    else:
+        foreground = cv2.resize(foreground.astype(float), (width, height)) / 255.0
+        print('Reloaded the foreground mask')
+
+    global inv_foreground
+    inv_foreground = 1 - foreground
 
 def get_mask(frame, bodypix_url='http://127.0.0.1:9000'):
     frame = cv2.resize(frame, (0, 0), fx=sf, fy=sf)
@@ -59,7 +67,7 @@ def shift_image(img, dx, dy):
         img[:, dx:] = 0
     return img
 
-def get_frame(cap, background):
+def get_frame(cap, background, foreground, inv_foreground):
     _, frame = cap.read()
     # fetch the mask with retries (the app needs to warmup and we're lazy)
     # e v e n t u a l l y c o n s i s t e n t
@@ -72,17 +80,19 @@ def get_frame(cap, background):
     # composite the foreground and background
     inv_mask = 1-mask
     for c in range(frame.shape[2]):
-        frame[:,:,c] = frame[:,:,c]*mask + background[:,:,c]*inv_mask
+        frame[:,:,c] = (frame[:,:,c]*mask + background[:,:,c]*inv_mask)*inv_foreground + background[:,:,c]*foreground
     return frame
 
 if __name__ == '__main__':
     signal(SIGINT, handler)
+    handler(None, None)
+
     print('Running...')
     print('Please press CTRL-\ to exit.')
     print('Please CTRL-C to reload the background image')
     # frames forever
     while True:
-        frame = get_frame(cap, background)
+        frame = get_frame(cap, background, foreground, inv_foreground)
         # fake webcam expects RGB
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         fake.schedule_frame(frame)

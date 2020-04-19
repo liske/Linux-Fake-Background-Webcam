@@ -77,7 +77,9 @@ In the other terminal window, do the following:
     cd fakecam
     python3 fake.py
 
-The background image is located in ``fakecam/background.jpg``.
+The background image is located in ``fakecam/background.jpg``. You can push
+parts of the background into the foreground using the mask file
+``fakecam/foreground.jpg``.
 
 If you want to change the webcam background in the middle of streaming, replace
 ``background.jpg``` in ``fakecam``, and press ``CTRL-C``

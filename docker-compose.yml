@@ -15,6 +15,7 @@ services:
         read_only: true
         # volumes:
         #   - /path/to/background.jpg:/src/background.jpg:ro
+        #   - /dev/null:/src/foreground.jpg:ro
         devices:
             # input (webcam)
             - /dev/video0:/dev/video0
